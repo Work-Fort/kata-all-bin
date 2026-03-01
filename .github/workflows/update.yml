@@ -1,0 +1,69 @@
+name: Update AUR Package
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for new release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LATEST=$(gh release view --repo kata-containers/kata-containers --json tagName -q .tagName)
+          CURRENT=$(grep '^pkgver=' PKGBUILD | cut -d= -f2)
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [ "$LATEST" != "$CURRENT" ]; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::New release found: $LATEST (current: $CURRENT)"
+          else
+            echo "update=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Already up to date: $CURRENT"
+          fi
+
+      - name: Update PKGBUILD version
+        if: steps.check.outputs.update == 'true'
+        run: |
+          VERSION="${{ steps.check.outputs.latest }}"
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+
+      - name: Update checksums and generate .SRCINFO
+        if: steps.check.outputs.update == 'true'
+        uses: heyhusen/archlinux-package-action@v3
+        with:
+          path: .
+          updpkgsums: true
+          srcinfo: true
+          namcap: false
+
+      - name: Commit updated PKGBUILD to GitHub
+        if: steps.check.outputs.update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git commit -m "chore: update to ${{ steps.check.outputs.latest }}"
+          git push
+
+      - name: Deploy to AUR
+        if: steps.check.outputs.update == 'true'
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        with:
+          pkgname: kata-all-bin
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ steps.check.outputs.latest }}"
+          ssh_keyscan_types: rsa,ecdsa,ed25519
+          allow_empty_commits: false
