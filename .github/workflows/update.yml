@@ -1,6 +1,9 @@
 name: Update AUR Package
 
 on:
+  push:
+    paths:
+      - 'PKGBUILD'
   schedule:
     - cron: '0 6 * * *'
   workflow_dispatch:
