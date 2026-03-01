@@ -59,4 +59,4 @@ A GitHub Actions workflow checks daily for new Kata Containers releases and push
 
 ## License
 
-The packaging files in this repository are provided under [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0), matching the upstream Kata Containers license.
+The packaging files in this repository are provided under [Apache-2.0](LICENSE.md), matching the upstream Kata Containers license.
