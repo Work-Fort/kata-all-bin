@@ -42,12 +42,13 @@ jobs:
 
       - name: Update checksums and generate .SRCINFO
         if: steps.check.outputs.update == 'true'
-        uses: heyhusen/archlinux-package-action@v3
+        uses: heyhusen/archlinux-package-action@v3.0.0
         with:
           path: .
           updpkgsums: true
           srcinfo: true
           namcap: false
+          flags: ''
 
       - name: Commit updated PKGBUILD to GitHub
         if: steps.check.outputs.update == 'true'
